@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <time.h>
 #include "SqlParser.h"
 #include "Table.h"
 #include "Cursor.h"
@@ -92,14 +93,14 @@ void closeDB(Table* table) {
 }
 
 ExecuteResult execute_insert(Statement* statement, Table* table) {
-    start = clock();
+    clock_t start = clock();
     Row* row_to_insert = &(statement->row_to_insert);
     Cursor* cursor = tableEnd(table);
     serialize_row(row_to_insert, cursorValue(cursor));
     table->num_rows += 1;
-    end = clock();
-    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    cout<<"Tempo de execucao: "<<cpu_time_used<<endl;
+    clock_t end = clock();
+    double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("%f",cpu_time_used);
     return EXECUTE_SUCCESS;
 }
 
