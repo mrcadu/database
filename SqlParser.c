@@ -92,10 +92,14 @@ void closeDB(Table* table) {
 }
 
 ExecuteResult execute_insert(Statement* statement, Table* table) {
+    start = clock();
     Row* row_to_insert = &(statement->row_to_insert);
     Cursor* cursor = tableEnd(table);
     serialize_row(row_to_insert, cursorValue(cursor));
     table->num_rows += 1;
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    cout<<"Tempo de execucao: "<<cpu_time_used<<endl;
     return EXECUTE_SUCCESS;
 }
 
