@@ -25,6 +25,5 @@ Pager* pager_open(const char* filename);
 void free_table(Table* table);
 void* getPage(Pager* pager, uint32_t page_num);
 uint32_t getPageSize();
-void* row_slot(Table* table, uint32_t row_num);
 
 #endif //DATABASE_TABLE_H

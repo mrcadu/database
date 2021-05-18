@@ -28,14 +28,6 @@ uint32_t getTableMaxPages(){
     return TABLE_MAX_PAGES;
 }
 
-
-void* row_slot(Table* table, uint32_t row_num) {
-    uint32_t page_num = row_num / getRowsPerPage();
-    void* page = getPage(table->pager, page_num);
-    uint32_t row_offset = row_num % getRowsPerPage();
-    uint32_t byte_offset = row_offset * getRowSize();
-    return page + byte_offset;
-}
 Table* getTable(const char* filename) {
     Pager* pager = pager_open(filename);
     uint32_t num_rows = pager -> file_length / getRowSize();

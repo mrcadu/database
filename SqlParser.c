@@ -6,6 +6,7 @@
 #include <errno.h>
 #include "SqlParser.h"
 #include "Table.h"
+#include "Cursor.h"
 
 PrepareResult prepare_statement(InputBuffer* input_buffer,Statement* statement) {
     if (strncmp(input_buffer->buffer, "insert", 6) == 0) {
@@ -92,7 +93,8 @@ void closeDB(Table* table) {
 
 ExecuteResult execute_insert(Statement* statement, Table* table) {
     Row* row_to_insert = &(statement->row_to_insert);
-    serialize_row(row_to_insert, row_slot(table, table->num_rows));
+    Cursor* cursor = tableEnd(table);
+    serialize_row(row_to_insert, cursorValue(cursor));
     table->num_rows += 1;
     return EXECUTE_SUCCESS;
 }
@@ -115,12 +117,15 @@ void flushPages(Pager* pager, uint32_t page_num, uint32_t size) {
 }
 
 ExecuteResult execute_select(Statement* statement, Table* table) {
-      Row row;
-      for (uint32_t i = 0; i < table->num_rows; i++) {
-        deserialize_row(row_slot(table, i), &row);
+    Cursor* cursor = tableStart(table);
+    Row row;
+    while (!(cursor->end_of_table)) {
+        deserialize_row(cursorValue(cursor), &row);
         print_row(&row);
-      }
-      return EXECUTE_SUCCESS;
+        cursorAdvance(cursor);
+    }
+    free(cursor);
+  return EXECUTE_SUCCESS;
 }
 void print_row(Row* row) {
     printf("(%d, %s, %s)\n", row->id, row->username, row->email);
