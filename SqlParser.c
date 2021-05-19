@@ -129,6 +129,37 @@ ExecuteResult execute_insert(Statement* statement, Table* table) {
     clock_t end = clock();
     double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     printf("%f",cpu_time_used);
+    free(statement);
+    return EXECUTE_SUCCESS;
+}
+
+ExecuteResult execute_sort(Table* table) {
+    int count = table->num_rows - 1;
+    while (count >= 1) {
+        Cursor* cursor = tableStart(table);
+        Row current;
+
+        Cursor* cursorNext = tableStart(table);
+        Row next;
+        while ((cursor->row_num < count)) {
+            deserialize_row(cursorValue(cursor), &current);
+            cursorNext->row_num = cursor->row_num;
+            cursorNext->row_num+=1;
+            deserialize_row(cursorValue(cursorNext), &next);
+
+            if (current.id > next.id) {
+                Row *nextRow = &next;
+                Row *currentRow = &current;
+
+                serialize_row(nextRow, cursorValue(cursor));
+                serialize_row(currentRow, cursorValue(cursorNext));
+            }
+            cursorAdvance(cursor);
+        }
+        count--;
+        free(cursor);
+        free(cursorNext);
+    }
     return EXECUTE_SUCCESS;
 }
 
@@ -228,6 +259,7 @@ ExecuteResult execute_deleteByCode(Statement* statement, Table* table) {
         cursorAdvance(cursor);
     }
     free(cursor);
+    execute_sort(table);
     return EXECUTE_SUCCESS;
 }
 
