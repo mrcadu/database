@@ -17,6 +17,9 @@ PrepareResult prepare_statement(InputBuffer* input_buffer,Statement* statement);
 
 ExecuteResult execute_statement(Statement *statement, Table* table);
 ExecuteResult execute_select(Statement* statement, Table* table);
+ExecuteResult execute_selectByCode(Statement* statement, Table* table);
+ExecuteResult execute_selectByName(Statement* statement, Table* table);
+ExecuteResult execute_selectByEmail(Statement* statement, Table* table);
 ExecuteResult execute_insert(Statement* statement, Table* table);
 void flushPages(Pager* pager, uint32_t page_num, uint32_t size);
 void closeDB(Table* table);

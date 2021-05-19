@@ -8,6 +8,7 @@
 #include "SqlParser.h"
 #include "Table.h"
 #include "Cursor.h"
+#include<ctype.h>
 
 PrepareResult prepare_statement(InputBuffer* input_buffer,Statement* statement) {
     if (strncmp(input_buffer->buffer, "insert", 6) == 0) {
@@ -18,10 +19,27 @@ PrepareResult prepare_statement(InputBuffer* input_buffer,Statement* statement) 
         }
         return PREPARE_SUCCESS;
     }
-    if (strcmp(input_buffer->buffer, "select") == 0) {
-        statement->type = STATEMENT_SELECT;
+    if (strstr(input_buffer->buffer, "select")) {
+        char temp[32];
+        sscanf(input_buffer->buffer, "select %s", temp);
+        if(isdigit(temp[0])){
+            statement->row_to_insert.id = atoi(temp);
+            statement->type = STATEMENT_SELECTBYCODE;
+        }else if (strstr(input_buffer->buffer, "@")){
+            sscanf(input_buffer->buffer, "select %s", statement->row_to_insert.email);
+            statement->type = STATEMENT_SELECTBYEMAIL;
+        }else{
+            sscanf(input_buffer->buffer, "select %s", statement->row_to_insert.username);
+            if(strcmp(statement->row_to_insert.username, "") != 0)
+            {
+                statement->type = STATEMENT_SELECTBYNAME;
+            }else{
+                statement->type = STATEMENT_SELECT;
+            }
+        }
         return PREPARE_SUCCESS;
     }
+
     if (strcmp(input_buffer->buffer, "delete") == 0) {
         statement->type = STATEMENT_DELETE;
         return PREPARE_SUCCESS;
@@ -40,6 +58,12 @@ ExecuteResult execute_statement(Statement *statement, Table* table) {
             return execute_insert(statement, table);
         case (STATEMENT_SELECT):
             return execute_select(statement, table);
+        case (STATEMENT_SELECTBYCODE):
+            return execute_selectByCode(statement, table);
+        case (STATEMENT_SELECTBYNAME):
+            return execute_selectByName(statement, table);
+        case (STATEMENT_SELECTBYEMAIL):
+            return execute_selectByEmail(statement, table);
         case (STATEMENT_DELETE):
             printf("This is where we would do a delete.\n");
             break;
@@ -132,6 +156,52 @@ ExecuteResult execute_select(Statement* statement, Table* table) {
     free(cursor);
   return EXECUTE_SUCCESS;
 }
+
+ExecuteResult execute_selectByCode(Statement* statement, Table* table) {
+    Cursor* cursor = tableStart(table);
+    Row row;
+    while (!(cursor->end_of_table)) {
+        deserialize_row(cursorValue(cursor), &row);
+        if(statement->row_to_insert.id == row.id)
+        {
+            print_row(&row);
+        }
+        cursorAdvance(cursor);
+    }
+    free(cursor);
+    return EXECUTE_SUCCESS;
+}
+
+ExecuteResult execute_selectByName(Statement* statement, Table* table) {
+    Cursor* cursor = tableStart(table);
+    Row row;
+    while (!(cursor->end_of_table)) {
+        deserialize_row(cursorValue(cursor), &row);
+        if(strcmp(statement->row_to_insert.username, row.username) == 0)
+        {
+            print_row(&row);
+        }
+        cursorAdvance(cursor);
+    }
+    free(cursor);
+    return EXECUTE_SUCCESS;
+}
+
+ExecuteResult execute_selectByEmail(Statement* statement, Table* table) {
+    Cursor* cursor = tableStart(table);
+    Row row;
+    while (!(cursor->end_of_table)) {
+        deserialize_row(cursorValue(cursor), &row);
+        if(strstr(row.email, statement->row_to_insert.email) || strstr(statement->row_to_insert.email, row.email))
+        {
+            print_row(&row);
+        }
+        cursorAdvance(cursor);
+    }
+    free(cursor);
+    return EXECUTE_SUCCESS;
+}
+
 void print_row(Row* row) {
     printf("(%d, %s, %s)\n", row->id, row->username, row->email);
 }
