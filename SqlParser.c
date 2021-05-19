@@ -40,8 +40,13 @@ PrepareResult prepare_statement(InputBuffer* input_buffer,Statement* statement) 
         return PREPARE_SUCCESS;
     }
 
-    if (strcmp(input_buffer->buffer, "delete") == 0) {
-        statement->type = STATEMENT_DELETE;
+    if (strstr(input_buffer->buffer, "delete")) {
+        char temp[32];
+        sscanf(input_buffer->buffer, "delete %s", temp);
+        if(isdigit(temp[0])){
+            statement->row_to_insert.id = atoi(temp);
+            statement->type = STATEMENT_DELETE;
+        }
         return PREPARE_SUCCESS;
     }
     if (strcmp(input_buffer->buffer, "exit") == 0) {
@@ -65,8 +70,7 @@ ExecuteResult execute_statement(Statement *statement, Table* table) {
         case (STATEMENT_SELECTBYEMAIL):
             return execute_selectByEmail(statement, table);
         case (STATEMENT_DELETE):
-            printf("This is where we would do a delete.\n");
-            break;
+            return execute_deleteByCode(statement, table);
         case STATEMENT_EXIT:
             closeDB(table);
             break;
@@ -195,6 +199,31 @@ ExecuteResult execute_selectByEmail(Statement* statement, Table* table) {
         if(strstr(row.email, statement->row_to_insert.email) || strstr(statement->row_to_insert.email, row.email))
         {
             print_row(&row);
+        }
+        cursorAdvance(cursor);
+    }
+    free(cursor);
+    return EXECUTE_SUCCESS;
+}
+
+ExecuteResult execute_deleteByCode(Statement* statement, Table* table) {
+    Cursor* cursor = tableStart(table);
+
+    Cursor* cursorEnd = tableStart(table);
+    cursorEnd->row_num = table->num_rows-1;
+    Row rowEndValue;
+    deserialize_row(cursorValue(cursorEnd), &rowEndValue);
+
+    Row* rowEnd = &rowEndValue;
+
+    Row row;
+    while (!(cursor->end_of_table)) {
+        deserialize_row(cursorValue(cursor), &row);
+        if(statement->row_to_insert.id == row.id)
+        {
+            print_row(&row);
+            serialize_row(rowEnd, cursorValue(cursor));
+            table->num_rows-=1;
         }
         cursorAdvance(cursor);
     }
