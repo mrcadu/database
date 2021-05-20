@@ -11,6 +11,9 @@
 #include<ctype.h>
 
 PrepareResult prepare_statement(InputBuffer* input_buffer,Statement* statement) {
+    statement->row_to_insert.id = 0;
+    strcpy(statement->row_to_insert.email, "");
+    strcpy(statement->row_to_insert.username, "");
     if (strncmp(input_buffer->buffer, "insert", 6) == 0) {
         statement->type = STATEMENT_INSERT;
         int args_assigned = sscanf(input_buffer->buffer, "insert %d %s %s", &(statement->row_to_insert.id),statement->row_to_insert.username, statement->row_to_insert.email);
@@ -129,7 +132,6 @@ ExecuteResult execute_insert(Statement* statement, Table* table) {
     clock_t end = clock();
     double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     printf("%f",cpu_time_used);
-    free(statement);
     return EXECUTE_SUCCESS;
 }
 
