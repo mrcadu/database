@@ -14,6 +14,11 @@ PrepareResult prepare_statement(InputBuffer* input_buffer,Statement* statement) 
     statement->row_to_insert.id = 0;
     strcpy(statement->row_to_insert.email, "");
     strcpy(statement->row_to_insert.username, "");
+
+    statement->current.id = 0;
+    strcpy(statement->current.email, "");
+    strcpy(statement->current.username, "");
+
     if (strncmp(input_buffer->buffer, "insert", 6) == 0) {
         statement->type = STATEMENT_INSERT;
         int args_assigned = sscanf(input_buffer->buffer, "insert %d %s %s", &(statement->row_to_insert.id),statement->row_to_insert.username, statement->row_to_insert.email);
@@ -44,12 +49,20 @@ PrepareResult prepare_statement(InputBuffer* input_buffer,Statement* statement) 
     }
 
     if (strstr(input_buffer->buffer, "delete")) {
-        char temp[32];
-        sscanf(input_buffer->buffer, "delete %s", temp);
-        if(isdigit(temp[0])){
-            statement->row_to_insert.id = atoi(temp);
-            statement->type = STATEMENT_DELETE;
+
+        if (strstr(input_buffer->buffer, "name")) {
+            char name[32];
+            sscanf(input_buffer->buffer, "delete name %s", name);
+            strcpy(statement->current.username,name);
+
+        } else {
+            char temp[32];
+            sscanf(input_buffer->buffer, "delete %s", temp);
+            if (isdigit(temp[0])) {
+                statement->current.id = atoi(temp);
+            }
         }
+        statement->type = STATEMENT_DELETE;
         return PREPARE_SUCCESS;
     }
 
@@ -85,7 +98,7 @@ ExecuteResult execute_statement(Statement *statement, Table* table) {
         case (STATEMENT_SELECTBYEMAIL):
             return execute_selectByEmail(statement, table);
         case (STATEMENT_DELETE):
-            return execute_deleteByCode(statement, table);
+            return execute_delete(statement, table);
         case (STATEMENT_UPDATE_NAME):
             return execute_update(statement, table);
         case (STATEMENT_UPDATE_EMAIL):
@@ -141,13 +154,29 @@ void closeDB(Table* table) {
 
 ExecuteResult execute_insert(Statement* statement, Table* table) {
     clock_t start = clock();
+
+    Cursor* cursor = tableStart(table);
     Row* row_to_insert = &(statement->row_to_insert);
-    Cursor* cursor = tableEnd(table);
-    serialize_row(row_to_insert, cursorValue(cursor));
+    Row row;
+    while (!(cursor->end_of_table)) {
+        deserialize_row(cursorValue(cursor), &row);
+        if(row.id == row_to_insert->id){
+            row_to_insert->id = table->num_rows + 1;
+            Cursor* cursorEnd = tableEnd(table);
+            serialize_row(row_to_insert, cursorValue(cursorEnd));
+            table->num_rows += 1;
+            return EXECUTE_SUCCESS;
+        }
+        cursorAdvance(cursor);
+    }
+
+    Cursor* cursorEnd = tableEnd(table);
+    serialize_row(row_to_insert, cursorValue(cursorEnd));
     table->num_rows += 1;
     clock_t end = clock();
     double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     printf("%f",cpu_time_used);
+
     return EXECUTE_SUCCESS;
 }
 
@@ -255,31 +284,83 @@ ExecuteResult execute_selectByEmail(Statement* statement, Table* table) {
     return EXECUTE_SUCCESS;
 }
 
-ExecuteResult execute_deleteByCode(Statement* statement, Table* table) {
+ExecuteResult execute_delete(Statement* statement, Table* table) {
+    Cursor* cursor = tableStart(table);
+
+    Row row;
+    int count = 0;
+    while (!(cursor->end_of_table)) {
+        deserialize_row(cursorValue(cursor), &row);
+
+        if(strcmp(statement->current.username, "")) {
+            if(strstr(statement->current.username, row.username) || strstr(row.username, statement->current.username))
+            {
+                deserialize_row(cursorValue(cursor), &row);
+                row.id = -1;
+                count++;
+                Row* rowEnd = &row;
+                serialize_row(rowEnd, cursorValue(cursor));
+            }
+        } else{
+            if(statement->current.id == row.id)
+            {
+                deserialize_row(cursorValue(cursor), &row);
+                row.id = -1;
+                count++;
+                Row* rowEnd = &row;
+                serialize_row(rowEnd, cursorValue(cursor));
+            }
+        }
+        cursorAdvance(cursor);
+    }
+
+    execute_sort(table);
+    table->num_rows-=count;
+    execute_sort(table);
+
+
+    return EXECUTE_SUCCESS;
+}
+
+/*ExecuteResult execute_delete(Statement* statement, Table* table) {
     Cursor* cursor = tableStart(table);
 
     Cursor* cursorEnd = tableStart(table);
-    cursorEnd->row_num = table->num_rows-1;
     Row rowEndValue;
-    deserialize_row(cursorValue(cursorEnd), &rowEndValue);
-
-    Row* rowEnd = &rowEndValue;
 
     Row row;
     while (!(cursor->end_of_table)) {
         deserialize_row(cursorValue(cursor), &row);
-        if(statement->row_to_insert.id == row.id)
-        {
-            print_row(&row);
-            serialize_row(rowEnd, cursorValue(cursor));
-            table->num_rows-=1;
+
+        if(strcmp(statement->current.username, "")) {
+            if(strstr(statement->current.username, row.username) || strstr(row.username, statement->current.username))
+            {
+                cursorEnd->row_num = table->num_rows-1;
+                deserialize_row(cursorValue(cursorEnd), &rowEndValue);
+                if(strstr(statement->current.username, rowEndValue.username) || strstr(rowEndValue.username, statement->current.username))
+                {
+                }else{
+                    Row* rowEnd = &rowEndValue;
+                    serialize_row(rowEnd, cursorValue(cursor));
+                }
+                table->num_rows-=1;
+            }
+        } else{
+            if(statement->current.id == row.id)
+            {
+                cursorEnd->row_num = table->num_rows-1;
+                deserialize_row(cursorValue(cursorEnd), &rowEndValue);
+                Row* rowEnd = &rowEndValue;
+                serialize_row(rowEnd, cursorValue(cursor));
+                table->num_rows-=1;
+            }
         }
         cursorAdvance(cursor);
     }
     free(cursor);
     execute_sort(table);
     return EXECUTE_SUCCESS;
-}
+}*/
 
 ExecuteResult execute_update(Statement* statement, Table* table) {
     Cursor* cursor = tableStart(table);

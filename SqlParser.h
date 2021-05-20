@@ -21,7 +21,7 @@ ExecuteResult execute_selectByCode(Statement* statement, Table* table);
 ExecuteResult execute_selectByName(Statement* statement, Table* table);
 ExecuteResult execute_selectByEmail(Statement* statement, Table* table);
 ExecuteResult execute_insert(Statement* statement, Table* table);
-ExecuteResult execute_deleteByCode(Statement* statement, Table* table);
+ExecuteResult execute_delete(Statement* statement, Table* table);
 ExecuteResult execute_update(Statement* statement, Table* table);
 ExecuteResult execute_sort(Table* table);
 void flushPages(Pager* pager, uint32_t page_num, uint32_t size);
