@@ -12,7 +12,8 @@ typedef enum { STATEMENT_INSERT, STATEMENT_SELECT, STATEMENT_SELECTBYCODE, STATE
 typedef struct {
     StatementType type;
     Row row_to_insert;
-    Row current;// only used by insert statement
+    Row current;
+    int countAccess;// only used by insert statement
 } Statement;
 
 

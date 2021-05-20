@@ -29,11 +29,11 @@ void populateDatabase(Table* table)
         perror("Unable to open the file");
         exit(1);
     }
-    char line[200];
+    char line[4096];
+    Statement statement;
     while(fgets(line, sizeof(line), the_file)){
         char *token;
         token = strtok(line, ",");
-        Statement statement;
         Row row_to_insert;
         int count = 0;
 
@@ -56,4 +56,6 @@ void populateDatabase(Table* table)
         statement.row_to_insert = row_to_insert;
         execute_insert(&statement, table);
     }
+    printf("numero de acessos: %d \n", statement.countAccess);
+    statement.countAccess = 0;
 }

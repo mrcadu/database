@@ -27,7 +27,6 @@ uint32_t getEmailOffset(){
 }
 
 void serialize_row(Row* source, void* destination) {
-
     memcpy(destination + getIdOffset(), &(source->id), ID_SIZE);
     memcpy(destination + getUsernameOffset(), &(source->username), USERNAME_SIZE);
     memcpy(destination + getEmailOffset(), &(source->email), EMAIL_SIZE);

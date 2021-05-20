@@ -153,16 +153,16 @@ void closeDB(Table* table) {
 }
 
 ExecuteResult execute_insert(Statement* statement, Table* table) {
-    clock_t start = clock();
-
     Cursor* cursor = tableStart(table);
     Row* row_to_insert = &(statement->row_to_insert);
     Row row;
     while (!(cursor->end_of_table)) {
+        statement->countAccess++;
         deserialize_row(cursorValue(cursor), &row);
         if(row.id == row_to_insert->id){
             row_to_insert->id = table->num_rows + 1;
             Cursor* cursorEnd = tableEnd(table);
+            statement->countAccess++;
             serialize_row(row_to_insert, cursorValue(cursorEnd));
             table->num_rows += 1;
             return EXECUTE_SUCCESS;
@@ -173,14 +173,10 @@ ExecuteResult execute_insert(Statement* statement, Table* table) {
     Cursor* cursorEnd = tableEnd(table);
     serialize_row(row_to_insert, cursorValue(cursorEnd));
     table->num_rows += 1;
-    clock_t end = clock();
-    double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("%f",cpu_time_used);
-
     return EXECUTE_SUCCESS;
 }
 
-ExecuteResult execute_sort(Table* table) {
+ExecuteResult execute_sort(Statement* statement, Table* table) {
     int count = table->num_rows - 1;
     while (count >= 1) {
         Cursor* cursor = tableStart(table);
@@ -189,16 +185,20 @@ ExecuteResult execute_sort(Table* table) {
         Cursor* cursorNext = tableStart(table);
         Row next;
         while ((cursor->row_num < count)) {
+            statement->countAccess++;
             deserialize_row(cursorValue(cursor), &current);
             cursorNext->row_num = cursor->row_num;
             cursorNext->row_num+=1;
+            statement->countAccess++;
             deserialize_row(cursorValue(cursorNext), &next);
 
             if (current.id > next.id) {
                 Row *nextRow = &next;
                 Row *currentRow = &current;
 
+                statement->countAccess++;
                 serialize_row(nextRow, cursorValue(cursor));
+                statement->countAccess++;
                 serialize_row(currentRow, cursorValue(cursorNext));
             }
             cursorAdvance(cursor);
@@ -230,19 +230,24 @@ void flushPages(Pager* pager, uint32_t page_num, uint32_t size) {
 ExecuteResult execute_select(Statement* statement, Table* table) {
     Cursor* cursor = tableStart(table);
     Row row;
+    statement->countAccess = 0;
     while (!(cursor->end_of_table)) {
+        statement->countAccess++;
         deserialize_row(cursorValue(cursor), &row);
         print_row(&row);
         cursorAdvance(cursor);
     }
     free(cursor);
+    printf("numero de acessos: %d \n", statement->countAccess);
   return EXECUTE_SUCCESS;
 }
 
 ExecuteResult execute_selectByCode(Statement* statement, Table* table) {
     Cursor* cursor = tableStart(table);
     Row row;
+    statement->countAccess = 0;
     while (!(cursor->end_of_table)) {
+        statement->countAccess++;
         deserialize_row(cursorValue(cursor), &row);
         if(statement->row_to_insert.id == row.id)
         {
@@ -251,13 +256,16 @@ ExecuteResult execute_selectByCode(Statement* statement, Table* table) {
         cursorAdvance(cursor);
     }
     free(cursor);
+    printf("numero de acessos: %d \n", statement->countAccess);
     return EXECUTE_SUCCESS;
 }
 
 ExecuteResult execute_selectByName(Statement* statement, Table* table) {
     Cursor* cursor = tableStart(table);
     Row row;
+    statement->countAccess = 0;
     while (!(cursor->end_of_table)) {
+        statement->countAccess++;
         deserialize_row(cursorValue(cursor), &row);
         if(strstr(row.username, statement->row_to_insert.username) || strstr(statement->row_to_insert.username, row.username))
         {
@@ -266,13 +274,16 @@ ExecuteResult execute_selectByName(Statement* statement, Table* table) {
         cursorAdvance(cursor);
     }
     free(cursor);
+    printf("numero de acessos: %d \n", statement->countAccess);
     return EXECUTE_SUCCESS;
 }
 
 ExecuteResult execute_selectByEmail(Statement* statement, Table* table) {
     Cursor* cursor = tableStart(table);
     Row row;
+    statement->countAccess = 0;
     while (!(cursor->end_of_table)) {
+        statement->countAccess++;
         deserialize_row(cursorValue(cursor), &row);
         if(strstr(row.email, statement->row_to_insert.email) || strstr(statement->row_to_insert.email, row.email))
         {
@@ -281,6 +292,7 @@ ExecuteResult execute_selectByEmail(Statement* statement, Table* table) {
         cursorAdvance(cursor);
     }
     free(cursor);
+    printf("numero de acessos: %d \n", statement->countAccess);
     return EXECUTE_SUCCESS;
 }
 
@@ -289,89 +301,67 @@ ExecuteResult execute_delete(Statement* statement, Table* table) {
 
     Row row;
     int count = 0;
+    statement->countAccess = 0;
     while (!(cursor->end_of_table)) {
+        statement->countAccess++;
         deserialize_row(cursorValue(cursor), &row);
 
         if(strcmp(statement->current.username, "")) {
             if(strstr(statement->current.username, row.username) || strstr(row.username, statement->current.username))
             {
+                statement->countAccess++;
                 deserialize_row(cursorValue(cursor), &row);
                 row.id = -1;
                 count++;
                 Row* rowEnd = &row;
+                statement->countAccess++;
                 serialize_row(rowEnd, cursorValue(cursor));
             }
         } else{
             if(statement->current.id == row.id)
             {
+                statement->countAccess++;
                 deserialize_row(cursorValue(cursor), &row);
                 row.id = -1;
                 count++;
                 Row* rowEnd = &row;
+                statement->countAccess++;
                 serialize_row(rowEnd, cursorValue(cursor));
+
+
+                printf("numero de acessos: %d \n", statement->countAccess);
+                //execute_sort(statement, table);
+                //table->num_rows-=count;
+                //execute_sort(statement, table);
+
+                return EXECUTE_SUCCESS;
             }
         }
         cursorAdvance(cursor);
     }
 
-    execute_sort(table);
-    table->num_rows-=count;
-    execute_sort(table);
 
+    printf("numero de acessos: %d \n", statement->countAccess);
+    //execute_sort(statement, table);
+    //table->num_rows-=count;
+    //execute_sort(statement, table);
 
     return EXECUTE_SUCCESS;
 }
 
-/*ExecuteResult execute_delete(Statement* statement, Table* table) {
-    Cursor* cursor = tableStart(table);
-
-    Cursor* cursorEnd = tableStart(table);
-    Row rowEndValue;
-
-    Row row;
-    while (!(cursor->end_of_table)) {
-        deserialize_row(cursorValue(cursor), &row);
-
-        if(strcmp(statement->current.username, "")) {
-            if(strstr(statement->current.username, row.username) || strstr(row.username, statement->current.username))
-            {
-                cursorEnd->row_num = table->num_rows-1;
-                deserialize_row(cursorValue(cursorEnd), &rowEndValue);
-                if(strstr(statement->current.username, rowEndValue.username) || strstr(rowEndValue.username, statement->current.username))
-                {
-                }else{
-                    Row* rowEnd = &rowEndValue;
-                    serialize_row(rowEnd, cursorValue(cursor));
-                }
-                table->num_rows-=1;
-            }
-        } else{
-            if(statement->current.id == row.id)
-            {
-                cursorEnd->row_num = table->num_rows-1;
-                deserialize_row(cursorValue(cursorEnd), &rowEndValue);
-                Row* rowEnd = &rowEndValue;
-                serialize_row(rowEnd, cursorValue(cursor));
-                table->num_rows-=1;
-            }
-        }
-        cursorAdvance(cursor);
-    }
-    free(cursor);
-    execute_sort(table);
-    return EXECUTE_SUCCESS;
-}*/
-
 ExecuteResult execute_update(Statement* statement, Table* table) {
     Cursor* cursor = tableStart(table);
     Row row;
+    statement->countAccess = 0;
     while (!(cursor->end_of_table)) {
+        statement->countAccess++;
         deserialize_row(cursorValue(cursor), &row);
         if(strcmp(statement->row_to_insert.username, "") == 0){
             if(strstr(row.email, statement->current.email) || strstr(statement->current.email, row.email))
             {
                 strcpy(row.username, statement->row_to_insert.email);
                 Row* rowUpdate = &row;
+                statement->countAccess++;
                 serialize_row(rowUpdate, cursorValue(cursor));
             }
 
@@ -380,12 +370,14 @@ ExecuteResult execute_update(Statement* statement, Table* table) {
             {
                 strcpy(row.username, statement->row_to_insert.username);
                 Row* rowUpdate = &row;
+                statement->countAccess++;
                 serialize_row(rowUpdate, cursorValue(cursor));
             }
         }
         cursorAdvance(cursor);
     }
     free(cursor);
+    printf("numero de acessos: %d \n", statement->countAccess);
     return EXECUTE_SUCCESS;
 }
 

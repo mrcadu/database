@@ -21,6 +21,7 @@ typedef struct {
 uint32_t getIDSize();
 uint32_t getUsernameSize();
 uint32_t getEmailSize();
+int getCountAccess();
 void serialize_row(Row* source, void* destination);
 void deserialize_row(void* source, Row* destination);
 

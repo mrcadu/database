@@ -23,7 +23,7 @@ ExecuteResult execute_selectByEmail(Statement* statement, Table* table);
 ExecuteResult execute_insert(Statement* statement, Table* table);
 ExecuteResult execute_delete(Statement* statement, Table* table);
 ExecuteResult execute_update(Statement* statement, Table* table);
-ExecuteResult execute_sort(Table* table);
+ExecuteResult execute_sort(Statement* statement, Table* table);
 void flushPages(Pager* pager, uint32_t page_num, uint32_t size);
 void closeDB(Table* table);
 void print_row(Row* row);
