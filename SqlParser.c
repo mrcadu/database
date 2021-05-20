@@ -214,7 +214,7 @@ ExecuteResult execute_selectByName(Statement* statement, Table* table) {
     Row row;
     while (!(cursor->end_of_table)) {
         deserialize_row(cursorValue(cursor), &row);
-        if(strcmp(statement->row_to_insert.username, row.username) == 0)
+        if(strstr(row.username, statement->row_to_insert.username) || strstr(statement->row_to_insert.username, row.username))
         {
             print_row(&row);
         }
