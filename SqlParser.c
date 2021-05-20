@@ -52,6 +52,18 @@ PrepareResult prepare_statement(InputBuffer* input_buffer,Statement* statement) 
         }
         return PREPARE_SUCCESS;
     }
+
+    if (strstr(input_buffer->buffer, "update")) {
+        if (strstr(input_buffer->buffer, "name")) {
+            sscanf(input_buffer->buffer, "update name %s %s", statement->current.username, statement->row_to_insert.username);
+            statement->type = STATEMENT_UPDATE_NAME;
+        }
+        else {
+            sscanf(input_buffer->buffer, "update email %s %s", statement->current.email, statement->row_to_insert.email);
+            statement->type = STATEMENT_UPDATE_EMAIL;
+        }
+        return PREPARE_SUCCESS;
+    }
     if (strcmp(input_buffer->buffer, "exit") == 0) {
         statement->type = STATEMENT_EXIT;
         return PREPARE_SUCCESS;
@@ -74,6 +86,10 @@ ExecuteResult execute_statement(Statement *statement, Table* table) {
             return execute_selectByEmail(statement, table);
         case (STATEMENT_DELETE):
             return execute_deleteByCode(statement, table);
+        case (STATEMENT_UPDATE_NAME):
+            return execute_update(statement, table);
+        case (STATEMENT_UPDATE_EMAIL):
+            return execute_update(statement, table);
         case STATEMENT_EXIT:
             closeDB(table);
             break;
@@ -262,6 +278,33 @@ ExecuteResult execute_deleteByCode(Statement* statement, Table* table) {
     }
     free(cursor);
     execute_sort(table);
+    return EXECUTE_SUCCESS;
+}
+
+ExecuteResult execute_update(Statement* statement, Table* table) {
+    Cursor* cursor = tableStart(table);
+    Row row;
+    while (!(cursor->end_of_table)) {
+        deserialize_row(cursorValue(cursor), &row);
+        if(strcmp(statement->row_to_insert.username, "") == 0){
+            if(strstr(row.email, statement->current.email) || strstr(statement->current.email, row.email))
+            {
+                strcpy(row.username, statement->row_to_insert.email);
+                Row* rowUpdate = &row;
+                serialize_row(rowUpdate, cursorValue(cursor));
+            }
+
+        }else if (strcmp(statement->row_to_insert.email, "") == 0){
+            if(strstr(row.username, statement->current.username) || strstr(statement->current.username, row.username))
+            {
+                strcpy(row.username, statement->row_to_insert.username);
+                Row* rowUpdate = &row;
+                serialize_row(rowUpdate, cursorValue(cursor));
+            }
+        }
+        cursorAdvance(cursor);
+    }
+    free(cursor);
     return EXECUTE_SUCCESS;
 }
 

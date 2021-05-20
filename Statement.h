@@ -7,11 +7,12 @@
 
 #include "Row.h"
 
-typedef enum { STATEMENT_INSERT, STATEMENT_SELECT, STATEMENT_SELECTBYCODE, STATEMENT_SELECTBYNAME, STATEMENT_SELECTBYEMAIL, STATEMENT_DELETE, STATEMENT_EXIT } StatementType;
+typedef enum { STATEMENT_INSERT, STATEMENT_SELECT, STATEMENT_SELECTBYCODE, STATEMENT_SELECTBYNAME, STATEMENT_SELECTBYEMAIL,STATEMENT_UPDATE_NAME, STATEMENT_UPDATE_EMAIL, STATEMENT_DELETE, STATEMENT_EXIT } StatementType;
 
 typedef struct {
     StatementType type;
-    Row row_to_insert;  // only used by insert statement
+    Row row_to_insert;
+    Row current;// only used by insert statement
 } Statement;
 
 
